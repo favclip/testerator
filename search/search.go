@@ -4,10 +4,10 @@ import (
 	"errors"
 
 	"github.com/favclip/testerator"
+	searchpb "github.com/favclip/testerator/aeinternal/search"
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
-	searchpb "google.golang.org/appengine/internal/search"
 	"google.golang.org/appengine/search"
 )
 
@@ -25,21 +25,29 @@ func init() {
 }
 
 func setup(s *testerator.Setup) error {
-	c := s.Context
-
-	if sniff, ok := c.Value(&ctxKey).(*searchSniffer); ok {
+	if sniff, ok := s.Context.Value(&ctxKey).(*searchSniffer); ok {
 		sniff.searchIndexDocumentRequests = nil
 		return nil
 	}
 
 	sniff := &searchSniffer{}
-	s.Context = context.WithValue(s.Context, *ctxKey, sniff)
-	s.Context = appengine.WithAPICallFunc(c, func(ctx context.Context, service, method string, in, out proto.Message) error {
+	s.Context = context.WithValue(s.Context, &ctxKey, sniff)
+	s.Context = appengine.WithAPICallFunc(s.Context, func(ctx context.Context, service, method string, in, out proto.Message) error {
 		if service == "search" && method == "IndexDocument" {
-			docReq := in.(*searchpb.IndexDocumentRequest)
-			sniff.searchIndexDocumentRequests = append(sniff.searchIndexDocumentRequests, docReq)
+			b, err := proto.Marshal(in)
+			if err != nil {
+				return err
+			}
+
+			req := &searchpb.IndexDocumentRequest{}
+			err = proto.Unmarshal(b, req)
+			if err != nil {
+				return err
+			}
+
+			sniff.searchIndexDocumentRequests = append(sniff.searchIndexDocumentRequests, req)
 		}
-		return appengine.APICall(c, service, method, in, out)
+		return appengine.APICall(ctx, service, method, in, out)
 	})
 
 	return nil

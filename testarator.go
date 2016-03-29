@@ -13,15 +13,14 @@ import (
 type Helper func(s *Setup) error
 
 type Setup struct {
-	Instance        aetest.Instance
-	Context         context.Context
-	originalContext context.Context
-	counter         int
-	Setuppers       []Helper
-	Cleaners        []Helper
-	total           int
-	ResetThreshold  int
-	SpinDowns       []chan struct{}
+	Instance       aetest.Instance
+	Context        context.Context
+	counter        int
+	Setuppers      []Helper
+	Cleaners       []Helper
+	total          int
+	ResetThreshold int
+	SpinDowns      []chan struct{}
 
 	sync.Mutex
 }
@@ -78,7 +77,7 @@ func (s *Setup) SpinUp() error {
 	}
 
 	s.Instance = inst
-	s.originalContext = c
+	s.Context = c
 
 	for _, setupper := range s.Setuppers {
 		err = setupper(s)
