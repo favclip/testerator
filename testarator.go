@@ -5,29 +5,23 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest"
-	"google.golang.org/appengine/datastore"
-	searchpb "google.golang.org/appengine/internal/search"
-	"google.golang.org/appengine/memcache"
-	"google.golang.org/appengine/search"
 )
 
-type Cleanup func(s *Setup) error
+type Helper func(s *Setup) error
 
 type Setup struct {
 	Instance        aetest.Instance
 	Context         context.Context
 	originalContext context.Context
 	counter         int
-	Cleaners        []Cleanup
+	Setuppers       []Helper
+	Cleaners        []Helper
 	total           int
 	ResetThreshold  int
 	SpinDowns       []chan struct{}
-
-	searchIndexDocumentRequests []*searchpb.IndexDocumentRequest
 
 	sync.Mutex
 }
@@ -37,9 +31,6 @@ var DefaultSetup *Setup
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	DefaultSetup = &Setup{}
-	DefaultSetup.Cleaners = append(DefaultSetup.Cleaners, cleanUpDatastore)
-	DefaultSetup.Cleaners = append(DefaultSetup.Cleaners, cleanUpMemcache)
-	DefaultSetup.Cleaners = append(DefaultSetup.Cleaners, cleanUpSearchDocument)
 }
 
 func SpinUp() (aetest.Instance, context.Context, error) {
@@ -67,7 +58,6 @@ func (s *Setup) SpinUp() error {
 	s.counter++
 
 	if s.Instance != nil {
-		s.searchIndexDocumentRequests = nil // reset
 		return nil
 	}
 
@@ -89,13 +79,13 @@ func (s *Setup) SpinUp() error {
 
 	s.Instance = inst
 	s.originalContext = c
-	s.Context = appengine.WithAPICallFunc(c, func(ctx context.Context, service, method string, in, out proto.Message) error {
-		if service == "search" && method == "IndexDocument" {
-			docReq := in.(*searchpb.IndexDocumentRequest)
-			s.searchIndexDocumentRequests = append(s.searchIndexDocumentRequests, docReq)
+
+	for _, setupper := range s.Setuppers {
+		err = setupper(s)
+		if err != nil {
+			return err
 		}
-		return appengine.APICall(c, service, method, in, out)
-	})
+	}
 
 	return nil
 }
@@ -120,7 +110,9 @@ func (s *Setup) SpinDown() error {
 			ch := make(chan struct{})
 			s.SpinDowns = append(s.SpinDowns, ch)
 			go func(inst aetest.Instance) {
-				defer func() { ch <- struct{}{} }()
+				defer func() {
+					ch <- struct{}{}
+				}()
 				inst.Close()
 			}(s.Instance)
 		}
@@ -147,69 +139,6 @@ func (s *Setup) SpinDown() error {
 		err := c(s)
 		if err != nil {
 			return err
-		}
-	}
-
-	return nil
-}
-
-func cleanUpDatastore(s *Setup) error {
-	t := datastore.NewQuery("__kind__").KeysOnly().Run(s.originalContext)
-	kinds := make([]string, 0)
-	for {
-		key, err := t.Next(nil)
-		if err == datastore.Done {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		kinds = append(kinds, key.StringID())
-	}
-
-	for _, kind := range kinds {
-		q := datastore.NewQuery(kind).KeysOnly()
-		keys, err := q.GetAll(s.originalContext, nil)
-		if err != nil {
-			return err
-		}
-		err = datastore.DeleteMulti(s.originalContext, keys)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func cleanUpMemcache(s *Setup) error {
-	memcache.Flush(s.originalContext)
-	return nil
-}
-
-func cleanUpSearchDocument(s *Setup) error {
-	c := s.originalContext
-	indexNames := make(map[string]bool, 0)
-	for _, req := range s.searchIndexDocumentRequests {
-		indexNames[*req.GetParams().GetIndexSpec().Name] = true
-	}
-	for indexName, _ := range indexNames {
-		idx, err := search.Open(indexName)
-		if err != nil {
-			return err
-		}
-		iter := idx.List(c, &search.ListOptions{IDsOnly: true})
-		for {
-			docID, err := iter.Next(nil)
-			if err == search.Done {
-				break
-			} else if err != nil {
-				return err
-			}
-			err = idx.Delete(c, docID)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
