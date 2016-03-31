@@ -26,9 +26,3 @@ testerator.SpinDown() // clear environment! Datastore, Memcache and Search API
 testerator.SpinDown() // clear environment! Datastore, Memcache and Search API
 testerator.SpinDown() // spin down
 ```
-
-# Known issue
-
-testerator uses `google.golang.org/appengine/internal/search` package.
-It becomes a problem in go1.5 environment.
-see [appengine issue 12417](https://code.google.com/p/googleappengine/issues/detail?id=12417)
