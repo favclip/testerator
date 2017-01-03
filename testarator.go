@@ -42,7 +42,7 @@ func SpinDown() error {
 }
 
 func IsCI() bool {
-	return os.Getenv("CIRCLECI") != ""
+	return os.Getenv("CI") != ""
 }
 
 func (s *Setup) SpinUp() error {
