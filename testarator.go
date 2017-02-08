@@ -105,7 +105,7 @@ func (s *Setup) SpinDown() error {
 			return
 		}
 
-		closeInstane := func() {
+		closeInstance := func() {
 			ch := make(chan struct{})
 			s.SpinDowns = append(s.SpinDowns, ch)
 			go func(inst aetest.Instance) {
@@ -117,11 +117,11 @@ func (s *Setup) SpinDown() error {
 		}
 
 		if s.counter == 0 {
-			closeInstane()
+			closeInstance()
 			s.Instance = nil
 		} else if s.total%s.ResetThreshold == 0 {
 			// Sometimes spin down causes. avoid to saturate file descriptor.
-			closeInstane()
+			closeInstance()
 			s.Instance = nil
 		}
 	}()
