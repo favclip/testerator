@@ -1,12 +1,13 @@
 package search
 
 import (
+	"context"
 	"errors"
 
 	"github.com/favclip/testerator"
 	searchpb "github.com/favclip/testerator/aeinternal/search"
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
+	netcontext "golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/search"
 )
@@ -32,7 +33,7 @@ func setup(s *testerator.Setup) error {
 
 	sniff := &searchSniffer{}
 	s.Context = context.WithValue(s.Context, &ctxKey, sniff)
-	s.Context = appengine.WithAPICallFunc(s.Context, func(ctx context.Context, service, method string, in, out proto.Message) error {
+	s.Context = appengine.WithAPICallFunc(s.Context, func(ctx netcontext.Context, service, method string, in, out proto.Message) error {
 		if service == "search" && method == "IndexDocument" {
 			b, err := proto.Marshal(in)
 			if err != nil {

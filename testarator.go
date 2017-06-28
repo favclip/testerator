@@ -1,11 +1,11 @@
 package testerator
 
 import (
+	"context"
 	"os"
 	"runtime"
 	"sync"
 
-	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest"
 )
