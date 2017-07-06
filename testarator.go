@@ -10,8 +10,10 @@ import (
 	"google.golang.org/appengine/aetest"
 )
 
+// Helper uses for setup hooks to Setup struct.
 type Helper func(s *Setup) error
 
+// Setup contains aetest.Instance and other environment for setup and clean up.
 type Setup struct {
 	Instance       aetest.Instance
 	Context        context.Context
@@ -25,6 +27,7 @@ type Setup struct {
 	sync.Mutex
 }
 
+// DefaultSetup uses from bare functions.
 var DefaultSetup *Setup
 
 func init() {
@@ -32,19 +35,29 @@ func init() {
 	DefaultSetup = &Setup{}
 }
 
+// SpinUp dispatch spin up request to DefaultSetup.SpinUp.
 func SpinUp() (aetest.Instance, context.Context, error) {
 	err := DefaultSetup.SpinUp()
 	return DefaultSetup.Instance, DefaultSetup.Context, err
 }
 
+// SpinDown dispatch spin down request to DefaultSetup.SpinDown.
 func SpinDown() error {
 	return DefaultSetup.SpinDown()
 }
 
+// IsCI returns this execution environment is Continuous Integration server or not.
+// Deprecated.
 func IsCI() bool {
 	return os.Getenv("CI") != ""
 }
 
+// SpinUp dev server.
+//
+// If you call this function twice. launch dev server and increment internal counter twice.
+// 1st time then dev server is up and increment internal counter.
+// 2nd time then dev server is increment internal counter only.
+// see document for SpinDown function.
 func (s *Setup) SpinUp() error {
 	s.Lock()
 	defer s.Unlock()
@@ -89,6 +102,13 @@ func (s *Setup) SpinUp() error {
 	return nil
 }
 
+// SpinDown dev server.
+//
+// This function clean up dev server environment.
+// However, internally there are two types of processing.
+// #1. if internal counter == 0, spin down dev server simply.
+// #2. otherwise, call each DefaultSetup.Cleaners. usually, it means cleanup Datastore and Search APIs.
+// see document for SpinUp function.
 func (s *Setup) SpinDown() error {
 	s.Lock()
 	defer s.Unlock()
