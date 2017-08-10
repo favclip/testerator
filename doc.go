@@ -19,7 +19,6 @@ for example.
 			fmt.Printf(err.Error())
 			os.Exit(1)
 		}
-		testerator.DefaultSetup.ResetThreshold = 15
 
 		status := m.Run()
 

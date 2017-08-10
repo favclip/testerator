@@ -63,7 +63,11 @@ func (s *Setup) SpinUp() error {
 	defer s.Unlock()
 
 	if s.ResetThreshold == 0 {
-		s.ResetThreshold = 15
+		// NOTE
+		//   https://cloud.google.com/appengine/docs/standard/go/release-notes
+		//   August 9, 2017 Updated Go SDK to version 1.9.57.
+		//   The aetest package now reuses HTTP connections, fixing a bug that exhausted file descriptors when running tests.
+		s.ResetThreshold = 1000
 	}
 
 	s.total++
