@@ -77,7 +77,11 @@ func (s *Setup) SpinUp() error {
 		return nil
 	}
 
-	opt := &aetest.Options{AppID: "unittest", StronglyConsistentDatastore: true}
+	opt := &aetest.Options{
+		AppID: "unittest",
+		StronglyConsistentDatastore: true,
+		SuppressDevAppServerLog:     true,
+	}
 	inst, err := aetest.NewInstance(opt)
 	if err != nil {
 		return err
