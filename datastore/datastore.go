@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"context"
+	"sync"
 
 	"github.com/favclip/testerator"
 	"google.golang.org/appengine"
@@ -9,60 +10,59 @@ import (
 )
 
 func init() {
-	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, cleanup)
+	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, func(s *testerator.Setup) error {
+		return cleanup(s.Context)
+	})
 }
 
-func cleanup(s *testerator.Setup) error {
-	contexts := []context.Context{s.Context}
+func cleanup(ctx context.Context) error {
 
 	q := datastore.NewQuery("__namespace__").KeysOnly()
-	namespaces, err := q.GetAll(s.Context, nil)
+	namespaceKeys, err := q.GetAll(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	for _, ns := range namespaces {
-		nsContext, err := appengine.Namespace(s.Context, ns.StringID())
-		if err != nil {
-			return err
-		}
-		contexts = append(contexts, nsContext)
+	var wg sync.WaitGroup
+	wg.Add(len(namespaceKeys))
+
+	var rErr error
+	for _, nsKey := range namespaceKeys {
+
+		nsKey := nsKey
+
+		go func() {
+			defer wg.Done()
+
+			ctx, err := appengine.Namespace(ctx, nsKey.StringID())
+			if err != nil {
+				rErr = err
+				return
+			}
+
+			q := datastore.NewQuery("__kind__").KeysOnly()
+			kindKeys, err := q.GetAll(ctx, nil)
+
+			for _, kindKey := range kindKeys {
+				q := datastore.NewQuery(kindKey.StringID()).KeysOnly()
+				keys, err := q.GetAll(ctx, nil)
+				if err != nil {
+					rErr = err
+					return
+				}
+				err = datastore.DeleteMulti(ctx, keys)
+				if err != nil {
+					rErr = err
+					return
+				}
+			}
+		}()
 	}
 
-	for _, ctx := range contexts {
-		err := cleanupUnderContext(ctx)
-		if err != nil {
-			return err
-		}
-	}
+	wg.Wait()
 
-	return nil
-}
-
-func cleanupUnderContext(ctx context.Context) error {
-	t := datastore.NewQuery("__kind__").KeysOnly().Run(ctx)
-	kinds := make([]string, 0)
-	for {
-		key, err := t.Next(nil)
-		if err == datastore.Done {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		kinds = append(kinds, key.StringID())
-	}
-
-	for _, kind := range kinds {
-		q := datastore.NewQuery(kind).KeysOnly()
-		keys, err := q.GetAll(ctx, nil)
-		if err != nil {
-			return err
-		}
-		err = datastore.DeleteMulti(ctx, keys)
-		if err != nil {
-			return err
-		}
+	if rErr != nil {
+		return rErr
 	}
 
 	return nil
