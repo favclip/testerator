@@ -1,38 +1,68 @@
 package datastore
 
 import (
+	"context"
+	"sync"
+
 	"github.com/favclip/testerator"
+	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 )
 
 func init() {
-	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, cleanup)
+	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, func(s *testerator.Setup) error {
+		return cleanup(s.Context)
+	})
 }
 
-func cleanup(s *testerator.Setup) error {
-	t := datastore.NewQuery("__kind__").KeysOnly().Run(s.Context)
-	kinds := make([]string, 0)
-	for {
-		key, err := t.Next(nil)
-		if err == datastore.Done {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		kinds = append(kinds, key.StringID())
+func cleanup(ctx context.Context) error {
+
+	q := datastore.NewQuery("__namespace__").KeysOnly()
+	namespaceKeys, err := q.GetAll(ctx, nil)
+	if err != nil {
+		return err
 	}
 
-	for _, kind := range kinds {
-		q := datastore.NewQuery(kind).KeysOnly()
-		keys, err := q.GetAll(s.Context, nil)
-		if err != nil {
-			return err
-		}
-		err = datastore.DeleteMulti(s.Context, keys)
-		if err != nil {
-			return err
-		}
+	var wg sync.WaitGroup
+	wg.Add(len(namespaceKeys))
+
+	var rErr error
+	for _, nsKey := range namespaceKeys {
+
+		nsKey := nsKey
+
+		go func() {
+			defer wg.Done()
+
+			ctx, err := appengine.Namespace(ctx, nsKey.StringID())
+			if err != nil {
+				rErr = err
+				return
+			}
+
+			q := datastore.NewQuery("__kind__").KeysOnly()
+			kindKeys, err := q.GetAll(ctx, nil)
+
+			for _, kindKey := range kindKeys {
+				q := datastore.NewQuery(kindKey.StringID()).KeysOnly()
+				keys, err := q.GetAll(ctx, nil)
+				if err != nil {
+					rErr = err
+					return
+				}
+				err = datastore.DeleteMulti(ctx, keys)
+				if err != nil {
+					rErr = err
+					return
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	if rErr != nil {
+		return rErr
 	}
 
 	return nil
