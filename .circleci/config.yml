@@ -1,0 +1,17 @@
+version: 2
+jobs:
+  build:
+    working_directory: /go/src/github.com/favclip/testerator
+    docker:
+      - image: vvakame/circleci-gaego
+        environment:
+          # 効果あるんかコレ？
+          TZ: "/usr/share/zoneinfo/Asia/Tokyo"
+    steps:
+      - checkout
+      - run:
+          name: setup GAE/Go dependencies
+          command: dep ensure
+      - run:
+          name: run GAE/Go test
+          command: goapp test -v ./...
