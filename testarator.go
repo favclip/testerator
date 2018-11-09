@@ -16,6 +16,7 @@ type Helper func(s *Setup) error
 // Setup contains aetest.Instance and other environment for setup and clean up.
 type Setup struct {
 	Instance       aetest.Instance
+	Options        *aetest.Options
 	Context        context.Context
 	counter        int
 	Setuppers      []Helper
@@ -77,11 +78,15 @@ func (s *Setup) SpinUp() error {
 		return nil
 	}
 
-	opt := &aetest.Options{
-		AppID: "unittest",
-		StronglyConsistentDatastore: true,
-		SuppressDevAppServerLog:     true,
+	opt := s.Options
+	if opt == nil {
+		opt = &aetest.Options{
+			AppID:                       "unittest",
+			StronglyConsistentDatastore: true,
+			SuppressDevAppServerLog:     true,
+		}
 	}
+
 	inst, err := aetest.NewInstance(opt)
 	if err != nil {
 		return err
