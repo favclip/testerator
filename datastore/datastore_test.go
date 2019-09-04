@@ -10,7 +10,7 @@ import (
 
 func TestCleanup(t *testing.T) {
 	opt := &aetest.Options{
-		AppID: "cleanup-test",
+		AppID:                       "cleanup-test",
 		StronglyConsistentDatastore: true,
 		SuppressDevAppServerLog:     true,
 	}
