@@ -11,11 +11,11 @@ import (
 
 func init() {
 	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, func(s *testerator.Setup) error {
-		return cleanup(s.Context)
+		return Cleanup(s.Context)
 	})
 }
 
-func cleanup(ctx context.Context) error {
+func Cleanup(ctx context.Context) error {
 
 	q := datastore.NewQuery("__namespace__").KeysOnly()
 	namespaceKeys, err := q.GetAll(ctx, nil)

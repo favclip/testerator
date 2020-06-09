@@ -11,11 +11,11 @@ import (
 
 func init() {
 	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, func(s *testerator.Setup) error {
-		return cleanup(s.Context)
+		return Cleanup(s.Context)
 	})
 }
 
-func cleanup(ctx context.Context) error {
+func Cleanup(ctx context.Context) error {
 
 	cdsCli, err := clds.NewClient(ctx, os.Getenv("DATASTORE_PROJECT_ID"))
 	if err != nil {

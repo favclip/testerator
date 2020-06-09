@@ -12,28 +12,32 @@ import (
 	"google.golang.org/appengine/search"
 )
 
-var ctxKey = "https://code.google.com/p/googleappengine/issues/detail?id=12747"
+type ctxKey struct{}
 
 var ErrSetupRequired = errors.New("please use '_ \"github.com/favclip/testerator/search\"'")
 
-type searchSniffer struct {
-	searchIndexDocumentRequests []*searchpb.IndexDocumentRequest
-}
-
 func init() {
-	testerator.DefaultSetup.Setuppers = append(testerator.DefaultSetup.Setuppers, setup)
-	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, cleanup)
+	testerator.DefaultSetup.Setuppers = append(testerator.DefaultSetup.Setuppers, func(s *testerator.Setup) error {
+		return Setup(s.Context)
+	})
+	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, func(s *testerator.Setup) error {
+		return Cleanup(s.Context)
+	})
 }
 
-func setup(s *testerator.Setup) error {
-	if sniff, ok := s.Context.Value(&ctxKey).(*searchSniffer); ok {
-		sniff.searchIndexDocumentRequests = nil
+type SearchSniffer struct {
+	IndexDocumentRequests []*searchpb.IndexDocumentRequest
+}
+
+func Setup(ctx context.Context) error {
+	if sniff, ok := ctx.Value(ctxKey{}).(*SearchSniffer); ok {
+		sniff.IndexDocumentRequests = nil
 		return nil
 	}
 
-	sniff := &searchSniffer{}
-	s.Context = context.WithValue(s.Context, &ctxKey, sniff)
-	s.Context = appengine.WithAPICallFunc(s.Context, func(ctx netcontext.Context, service, method string, in, out proto.Message) error {
+	sniff := &SearchSniffer{}
+	ctx = context.WithValue(ctx, ctxKey{}, sniff)
+	ctx = appengine.WithAPICallFunc(ctx, func(ctx netcontext.Context, service, method string, in, out proto.Message) error {
 		if service == "search" && method == "IndexDocument" {
 			b, err := proto.Marshal(in)
 			if err != nil {
@@ -46,7 +50,7 @@ func setup(s *testerator.Setup) error {
 				return err
 			}
 
-			sniff.searchIndexDocumentRequests = append(sniff.searchIndexDocumentRequests, req)
+			sniff.IndexDocumentRequests = append(sniff.IndexDocumentRequests, req)
 		}
 		return appengine.APICall(ctx, service, method, in, out)
 	})
@@ -54,15 +58,14 @@ func setup(s *testerator.Setup) error {
 	return nil
 }
 
-func cleanup(s *testerator.Setup) error {
-	c := s.Context
-	sniff, ok := c.Value(&ctxKey).(*searchSniffer)
+func Cleanup(ctx context.Context) error {
+	sniff, ok := ctx.Value(ctxKey{}).(*SearchSniffer)
 	if !ok {
 		return ErrSetupRequired
 	}
 
 	indexNames := make(map[string]bool, 0)
-	for _, req := range sniff.searchIndexDocumentRequests {
+	for _, req := range sniff.IndexDocumentRequests {
 		indexNames[*req.GetParams().GetIndexSpec().Name] = true
 	}
 	for indexName, _ := range indexNames {
@@ -70,7 +73,7 @@ func cleanup(s *testerator.Setup) error {
 		if err != nil {
 			return err
 		}
-		iter := idx.List(c, &search.ListOptions{IDsOnly: true})
+		iter := idx.List(ctx, &search.ListOptions{IDsOnly: true})
 		for {
 			docID, err := iter.Next(nil)
 			if err == search.Done {
@@ -78,14 +81,14 @@ func cleanup(s *testerator.Setup) error {
 			} else if err != nil {
 				return err
 			}
-			err = idx.Delete(c, docID)
+			err = idx.Delete(ctx, docID)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	sniff.searchIndexDocumentRequests = nil
+	sniff.IndexDocumentRequests = nil
 
 	return nil
 }

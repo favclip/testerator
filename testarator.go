@@ -3,7 +3,6 @@ package testerator
 import (
 	"context"
 	"os"
-	"runtime"
 	"sync"
 
 	"google.golang.org/appengine"
@@ -16,6 +15,7 @@ type Helper func(s *Setup) error
 // Setup contains aetest.Instance and other environment for setup and clean up.
 type Setup struct {
 	Instance       aetest.Instance
+	Disable1stGen  bool
 	Options        *aetest.Options
 	Context        context.Context
 	counter        int
@@ -32,7 +32,7 @@ type Setup struct {
 var DefaultSetup *Setup
 
 func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	// runtime.GOMAXPROCS(runtime.NumCPU())
 	DefaultSetup = &Setup{}
 }
 
@@ -87,26 +87,27 @@ func (s *Setup) SpinUp() error {
 		}
 	}
 
-	inst, err := aetest.NewInstance(opt)
-	if err != nil {
-		return err
-	}
-	req, err := inst.NewRequest("GET", "/", nil)
-	if err != nil {
-		return err
-	}
+	if s.Disable1stGen {
+		s.Instance = &mockAEInstance{}
+		s.Context = context.Background()
+	} else {
+		inst, err := aetest.NewInstance(opt)
+		if err != nil {
+			return err
+		}
+		req, err := inst.NewRequest("GET", "/", nil)
+		if err != nil {
+			return err
+		}
 
-	c := appengine.NewContext(req)
+		c := appengine.NewContext(req)
 
-	if err != nil {
-		return err
+		s.Instance = inst
+		s.Context = c
 	}
-
-	s.Instance = inst
-	s.Context = c
 
 	for _, setupper := range s.Setuppers {
-		err = setupper(s)
+		err := setupper(s)
 		if err != nil {
 			return err
 		}
