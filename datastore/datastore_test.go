@@ -46,7 +46,7 @@ func TestCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = cleanup(ctx)
+	err = Cleanup(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

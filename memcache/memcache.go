@@ -1,15 +1,18 @@
 package memcache
 
 import (
+	"context"
+
 	"github.com/favclip/testerator"
 	"google.golang.org/appengine/memcache"
 )
 
 func init() {
-	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, cleanUpMemcache)
+	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, func(s *testerator.Setup) error {
+		return Cleanup(s.Context)
+	})
 }
 
-func cleanUpMemcache(s *testerator.Setup) error {
-	memcache.Flush(s.Context)
-	return nil
+func Cleanup(ctx context.Context) error {
+	return memcache.Flush(ctx)
 }
