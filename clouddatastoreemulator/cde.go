@@ -2,6 +2,7 @@ package clouddatastoreemulator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
