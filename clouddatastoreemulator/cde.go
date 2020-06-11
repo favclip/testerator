@@ -104,6 +104,10 @@ func New(ctx context.Context, cfg *Config) (*datastore.Client, func(), error) {
 }
 
 func checkEmulatorInstance(ctx context.Context, cfg *Config) (*datastore.Client, error) {
+	if os.Getenv("DATASTORE_EMULATOR_HOST") == "" {
+		return nil, errors.New("not found datastore emulator")
+	}
+
 	dsCli, err := datastore.NewClient(ctx, cfg.ProjectID, cfg.Options...)
 	if err != nil {
 		return nil, err
