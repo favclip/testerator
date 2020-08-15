@@ -119,9 +119,7 @@ func (s *Setup) SpinUp() error {
 // SpinDown dev server.
 //
 // This function clean up dev server environment.
-// However, internally there are two types of processing.
-// #1. if internal counter == 0, spin down dev server simply.
-// #2. otherwise, call each DefaultSetup.Cleaners. usually, it means cleanup Datastore and Search APIs.
+// call each DefaultSetup.Cleaners. usually, it means cleanup Datastore and Search APIs and miscs.
 // see document for SpinUp function.
 func (s *Setup) SpinDown() error {
 	s.Lock()
@@ -160,13 +158,6 @@ func (s *Setup) SpinDown() error {
 		}
 	}()
 
-	s.counter--
-
-	if s.counter == 0 {
-		// server spin downed.
-		return nil
-	}
-
 	// clean up environment
 	for _, c := range s.Cleaners {
 		err := c(s)
@@ -174,6 +165,8 @@ func (s *Setup) SpinDown() error {
 			return err
 		}
 	}
+
+	s.counter--
 
 	return nil
 }
