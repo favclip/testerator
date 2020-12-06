@@ -3,6 +3,8 @@ package search
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 
 	"github.com/favclip/testerator"
 	searchpb "github.com/favclip/testerator/aeinternal/search"
@@ -18,9 +20,15 @@ var ErrSetupRequired = errors.New("please use '_ \"github.com/favclip/testerator
 
 func init() {
 	testerator.DefaultSetup.Setuppers = append(testerator.DefaultSetup.Setuppers, func(s *testerator.Setup) error {
+		if s.Disable1stGen {
+			_, _ = fmt.Fprintln(os.Stderr, `don't use "github.com/favclip/testerator/search" package with Disable1stGen`)
+		}
 		return Setup(s.Context)
 	})
 	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, func(s *testerator.Setup) error {
+		if s.Disable1stGen {
+			_, _ = fmt.Fprintln(os.Stderr, `don't use "github.com/favclip/testerator/search" package with Disable1stGen`)
+		}
 		return Cleanup(s.Context)
 	})
 }
