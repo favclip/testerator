@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, func(s *testerator.Setup) error {
+	testerator.DefaultSetup.AppendCleanup(func(s *testerator.Setup) error {
 		if s.Disable1stGen {
 			_, _ = fmt.Fprintln(os.Stderr, `don't use "github.com/favclip/testerator/datastore" package with Disable1stGen`)
 		}
