@@ -3,18 +3,19 @@ package clouddatastore
 import (
 	"context"
 	"os"
-	"sync"
 
 	clds "cloud.google.com/go/datastore"
 	"github.com/favclip/testerator"
+	"golang.org/x/sync/errgroup"
 )
 
 func init() {
-	testerator.DefaultSetup.Cleaners = append(testerator.DefaultSetup.Cleaners, func(s *testerator.Setup) error {
+	testerator.DefaultSetup.AppendCleanup(func(s *testerator.Setup) error {
 		return Cleanup(s.Context)
 	})
 }
 
+// Cleanup after test running.
 func Cleanup(ctx context.Context) error {
 
 	cdsCli, err := clds.NewClient(ctx, os.Getenv("DATASTORE_PROJECT_ID"))
@@ -28,44 +29,49 @@ func Cleanup(ctx context.Context) error {
 		return err
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(namespaceKeys))
-
-	var rErr error
+	var eg errgroup.Group
 	for _, nsKey := range namespaceKeys {
-
 		nsKey := nsKey
-
-		go func() {
-			defer wg.Done()
-
+		eg.Go(func() error {
 			q := clds.NewQuery("__kind__").Namespace(nsKey.Name).KeysOnly()
 			kindKeys, err := cdsCli.GetAll(ctx, q, nil)
 			if err != nil {
-				rErr = err
-				return
+				return err
 			}
 
 			for _, kindKey := range kindKeys {
 				q := clds.NewQuery(kindKey.Name).Namespace(kindKey.Namespace).KeysOnly()
 				keys, err := cdsCli.GetAll(ctx, q, nil)
 				if err != nil {
-					rErr = err
-					return
+					return err
 				}
-				err = cdsCli.DeleteMulti(ctx, keys)
-				if err != nil {
-					rErr = err
-					return
+
+				const limit = 500
+				for {
+					if len(keys) <= limit {
+						err = cdsCli.DeleteMulti(ctx, keys)
+						if err != nil {
+							return err
+						}
+						break
+					}
+
+					err = cdsCli.DeleteMulti(ctx, keys[0:limit])
+					if err != nil {
+						return err
+					}
+
+					keys = keys[limit:]
 				}
 			}
-		}()
+
+			return nil
+		})
 	}
 
-	wg.Wait()
-
-	if rErr != nil {
-		return rErr
+	err = eg.Wait()
+	if err != nil {
+		return err
 	}
 
 	return nil

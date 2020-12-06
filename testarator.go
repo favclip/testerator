@@ -16,6 +16,7 @@ type Helper func(s *Setup) error
 type Setup struct {
 	Instance       aetest.Instance
 	Disable1stGen  bool
+	RaisePanic     bool
 	Options        *aetest.Options
 	Context        context.Context
 	counter        int
@@ -162,6 +163,9 @@ func (s *Setup) SpinDown() error {
 	for _, c := range s.Cleaners {
 		err := c(s)
 		if err != nil {
+			if s.RaisePanic {
+				panic(err)
+			}
 			return err
 		}
 	}
@@ -169,4 +173,18 @@ func (s *Setup) SpinDown() error {
 	s.counter--
 
 	return nil
+}
+
+func (s *Setup) AppendSetuppers(h Helper) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.Setuppers = append(s.Setuppers, h)
+}
+
+func (s *Setup) AppendCleanup(h Helper) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.Cleaners = append(s.Cleaners, h)
 }
