@@ -9,6 +9,5 @@ require (
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9 // indirect
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
-	google.golang.org/api v0.26.0
 	google.golang.org/appengine/v2 v2.0.1
 )
