@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/favclip/testerator"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/v2"
+	"google.golang.org/appengine/v2/datastore"
 )
 
 func init() {
@@ -21,7 +21,6 @@ func init() {
 }
 
 func Cleanup(ctx context.Context) error {
-
 	q := datastore.NewQuery("__namespace__").KeysOnly()
 	namespaceKeys, err := q.GetAll(ctx, nil)
 	if err != nil {

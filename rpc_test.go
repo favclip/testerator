@@ -3,11 +3,11 @@ package testerator
 import (
 	"testing"
 
-	"google.golang.org/appengine/search"
+	"google.golang.org/appengine/v2/datastore"
 )
 
-type Sample struct {
-	Foo string
+type Document struct {
+	Name string
 }
 
 func TestPutDocument(t *testing.T) {
@@ -16,21 +16,25 @@ func TestPutDocument(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 	defer SpinDown()
-	// exec twice
+
 	_, c, err = SpinUp()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 	defer SpinDown()
 
-	idx, err := search.Open("test")
+	doc := Document{Name: "sample"}
+	key, err := datastore.Put(c, datastore.NewIncompleteKey(c, "document", nil), &doc)
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatal(err)
 	}
 
-	doc := &Sample{"Hi!"}
-	_, err = idx.Put(c, "aaa", doc)
-	if err != nil {
-		t.Fatal(err.Error())
+	doc2 := Document{}
+	if err = datastore.Get(c, key, &doc2); err != nil {
+		t.Fatal(err)
+	}
+
+	if doc2.Name != "sample" {
+		t.Fatalf("Name is not sample. got=%s", doc2.Name)
 	}
 }

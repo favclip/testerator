@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/favclip/testerator"
-	"google.golang.org/appengine/memcache"
+	"google.golang.org/appengine/v2/memcache"
 )
 
 func init() {

@@ -5,8 +5,8 @@ import (
 	"os"
 	"sync"
 
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/aetest"
+	"google.golang.org/appengine/v2"
+	"google.golang.org/appengine/v2/aetest"
 )
 
 // Helper uses for setup hooks to Setup struct.
