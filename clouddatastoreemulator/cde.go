@@ -9,15 +9,15 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/ory/dockertest/v3"
-	// "google.golang.org/api/option"
+	"google.golang.org/api/option"
 )
 
 // Config provides some setting values.
 type Config struct {
 	DockerEndpoint string
 	ProjectID      string
-	// Options        []option.ClientOption
-	Tag string
+	Options        []option.ClientOption
+	Tag            string
 }
 
 // New Cloud Datastore Emulator spawned or detect and setup.
@@ -109,7 +109,7 @@ func checkEmulatorInstance(ctx context.Context, cfg *Config) (*datastore.Client,
 		return nil, errors.New("not found datastore emulator")
 	}
 
-	dsCli, err := datastore.NewClient(ctx, cfg.ProjectID)
+	dsCli, err := datastore.NewClient(ctx, cfg.ProjectID, cfg.Options...)
 	if err != nil {
 		return nil, err
 	}
