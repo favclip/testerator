@@ -11,7 +11,7 @@ env:
 
 jobs:
   test-v2:
-    name: Test
+    name: Test v2
     runs-on: ubuntu-latest
     continue-on-error: true
     strategy:
@@ -64,7 +64,7 @@ jobs:
           go test -v ./...
 
   test-v1:
-    name: Test
+    name: Test v1
     runs-on: ubuntu-latest
     continue-on-error: true
     strategy:
