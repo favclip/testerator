@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 
+	"google.golang.org/appengine/v2"
 	"google.golang.org/appengine/v2/aetest"
 )
 
